@@ -6,10 +6,12 @@ import { DomainResults } from "@/components/domain-results"
 import { Header } from "@/components/header"
 import { domainChecker } from "@/lib/advanced-domain-checker"
 import { checkTrademarkConflict } from "@/lib/domain-checker"
-import { countryCityData } from "@/data/cities"
+import { countriesData } from "@/data/cities"
+import DomainGenerator from "../domain-generator"
 
 export interface DomainResult {
   domain: string
+  keyword?: string
   city: string
   state: string
   population: number
@@ -20,10 +22,10 @@ export interface DomainResult {
 export default function Home() {
   const [results, setResults] = useState<DomainResult[]>([])
   const [loading, setLoading] = useState(false)
-  const [currentKeyword, setCurrentKeyword] = useState("")
+  const [currentKeywords, setCurrentKeywords] = useState<string[]>([])
 
   const handleSearch = async (searchParams: {
-    keyword: string
+    keywords: string[]
     country: string
     city: string
     keywordPosition: string
@@ -31,10 +33,10 @@ export default function Home() {
     swapWords: boolean
   }) => {
     setLoading(true)
-    setCurrentKeyword(searchParams.keyword)
+    setCurrentKeywords(searchParams.keywords)
 
     try {
-      // Generate potential domains for all cities in the country
+      // Generate potential domains for all keywords × cities combinations
       const potentialDomains = generateDomainCombinations(searchParams)
 
       // Check availability for each domain
@@ -47,7 +49,7 @@ export default function Home() {
 
         const batchPromises = batch.map(async (domainData) => {
           const isAvailable = await domainChecker.checkAvailability(domainData.domain)
-          const hasTrademarkIssue = await checkTrademarkConflict(searchParams.keyword)
+          const hasTrademarkIssue = await checkTrademarkConflict(domainData.keyword || "")
 
           if (isAvailable && !hasTrademarkIssue) {
             return {
@@ -80,9 +82,9 @@ export default function Home() {
     }
   }
 
-  // Generate multiple domain combinations for all cities in the selected country
+  // Generate multiple domain combinations for all keywords × cities
   const generateDomainCombinations = (searchParams: {
-    keyword: string
+    keywords: string[]
     country: string
     city: string
     keywordPosition: string
@@ -92,27 +94,33 @@ export default function Home() {
     const domains: Omit<DomainResult, "available" | "trademark">[] = []
 
     // Get all cities for the selected country
-    const cities = countryCityData[searchParams.country] || []
+    const countryData = countriesData.find((country) => country.code === searchParams.country)
+    const cities = countryData ? countryData.cities : []
 
-    cities.forEach((city) => {
-      const cleanCity = city.replace(/\s+/g, "") // Remove all spaces from city name
-      let domainName = ""
+    // Generate domains for each keyword × city combination
+    searchParams.keywords.forEach((keyword) => {
+      cities.forEach((cityData) => {
+        const cleanCity = cityData.name.replace(/\s+/g, "") // Remove all spaces from city name
+        const cleanKeyword = keyword.replace(/\s+/g, "") // Remove spaces from keyword
+        let domainName = ""
 
-      if (searchParams.keywordPosition === "beginning") {
-        domainName = searchParams.swapWords
-          ? `${cleanCity}${searchParams.keyword}${searchParams.extension}`
-          : `${searchParams.keyword}${cleanCity}${searchParams.extension}`
-      } else {
-        domainName = searchParams.swapWords
-          ? `${searchParams.keyword}${cleanCity}${searchParams.extension}`
-          : `${cleanCity}${searchParams.keyword}${searchParams.extension}`
-      }
+        if (searchParams.keywordPosition === "beginning") {
+          domainName = searchParams.swapWords
+            ? `${cleanCity}${cleanKeyword}${searchParams.extension}`
+            : `${cleanKeyword}${cleanCity}${searchParams.extension}`
+        } else {
+          domainName = searchParams.swapWords
+            ? `${cleanKeyword}${cleanCity}${searchParams.extension}`
+            : `${cleanCity}${cleanKeyword}${searchParams.extension}`
+        }
 
-      domains.push({
-        domain: domainName.toLowerCase(),
-        city: city, // Keep original city name for display
-        state: getStateForCity(city),
-        population: getPopulationForCity(city),
+        domains.push({
+          domain: domainName.toLowerCase(),
+          keyword: keyword, // Store the original keyword
+          city: cityData.name, // Keep original city name for display
+          state: cityData.state,
+          population: cityData.population || getPopulationForCity(cityData.name),
+        })
       })
     })
 
@@ -124,30 +132,11 @@ export default function Home() {
       <Header />
       <main className="container mx-auto px-4 py-8">
         <DomainForm onSearch={handleSearch} loading={loading} />
-        {results.length > 0 && <DomainResults results={results} keyword={currentKeyword} />}
+        {results.length > 0 && <DomainResults results={results} keywords={currentKeywords} />}
+        <DomainGenerator />
       </main>
     </div>
   )
-}
-
-function getStateForCity(city: string): string {
-  const cityStateMap: Record<string, string> = {
-    "New York": "New York",
-    "Los Angeles": "California",
-    Chicago: "Illinois",
-    Houston: "Texas",
-    Phoenix: "Arizona",
-    Philadelphia: "Pennsylvania",
-    "San Antonio": "Texas",
-    "San Diego": "California",
-    Dallas: "Texas",
-    Austin: "Texas",
-    Toronto: "Ontario",
-    Vancouver: "British Columbia",
-    Montreal: "Quebec",
-    Calgary: "Alberta",
-  }
-  return cityStateMap[city] || "Unknown"
 }
 
 function getPopulationForCity(city: string): number {
@@ -166,6 +155,14 @@ function getPopulationForCity(city: string): number {
     Vancouver: 675218,
     Montreal: 1780000,
     Calgary: 1336000,
+    Birmingham: 200733,
+    Huntsville: 215006,
+    Mobile: 187041,
+    Montgomery: 200603,
+    Tuscaloosa: 101129,
+    Anchorage: 291247,
+    Fairbanks: 32515,
+    Juneau: 32255,
   }
-  return cityPopulationMap[city] || 500000
+  return cityPopulationMap[city] || 50000
 }
