@@ -1,15 +1,15 @@
 "use client"
 
-import type React from "react"
-
 import { useState } from "react"
+
+import type React from "react"
 import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Search, MapPin, Globe, Settings, Hash } from "lucide-react"
+import { Search, MapPin, Globe, Settings, Hash, CheckCircle } from "lucide-react"
 
 interface DomainFormProps {
   onSearch: (params: {
@@ -32,10 +32,7 @@ export function DomainForm({ onSearch, loading }: DomainFormProps) {
 
   // Parse keywords from input (comma-separated or line-separated)
   const parseKeywords = (input: string): string[] => {
-    return input
-      .split(/[,\n]/)
-      .map((keyword) => keyword.trim())
-      .filter((keyword) => keyword.length > 0)
+    return input.trim() ? [input.trim()] : []
   }
 
   const parsedKeywords = parseKeywords(keywordInput)
@@ -58,15 +55,16 @@ export function DomainForm({ onSearch, loading }: DomainFormProps) {
     <Card className="bg-white/95 backdrop-blur-sm shadow-2xl border-0 mb-8">
       <CardHeader className="text-center">
         <CardTitle className="text-3xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
-          Geo Domain Generator - Bulk Keywords
+          Geo Domain Generator - Available Domains Only
         </CardTitle>
         <CardDescription className="text-lg text-gray-600 max-w-4xl mx-auto">
-          Generate geo-targeted domain names for multiple keywords across all major cities in USA or Canada. Get
-          availability status, population data, and useful tools for each domain suggestion.
+          Generate geo-targeted domain names for one keyword across all major cities. Only shows available domains that
+          you can register right now.
         </CardDescription>
-        <div className="bg-orange-100 border border-orange-200 rounded-lg p-3 mt-4">
-          <p className="text-orange-800 text-sm">
-            💡 Enter multiple keywords separated by commas or new lines to generate domains for all combinations
+        <div className="bg-green-100 border border-green-200 rounded-lg p-3 mt-4">
+          <p className="text-green-800 text-sm flex items-center gap-2">
+            <CheckCircle className="h-4 w-4" />
+            Only available domains will be displayed - no taken domains shown
           </p>
         </div>
       </CardHeader>
@@ -74,23 +72,21 @@ export function DomainForm({ onSearch, loading }: DomainFormProps) {
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <Label htmlFor="keywords" className="flex items-center gap-2 text-gray-700 font-medium">
+              <Label htmlFor="keyword" className="flex items-center gap-2 text-gray-700 font-medium">
                 <Search className="h-4 w-4" />
-                Enter keywords (comma or line separated)
+                Enter keyword
               </Label>
-              <Textarea
-                id="keywords"
+              <Input
+                id="keyword"
                 value={keywordInput}
                 onChange={(e) => setKeywordInput(e.target.value)}
-                placeholder="lawyer&#10;attorney&#10;legal services&#10;law firm"
-                className="border-gray-300 focus:border-orange-500 focus:ring-orange-500 min-h-[120px] resize-none font-mono text-sm"
+                placeholder="lawyer"
+                className="border-gray-300 focus:border-orange-500 focus:ring-orange-500"
                 required
               />
               <div className="flex items-center gap-2 text-sm text-gray-500">
                 <Hash className="h-3 w-3" />
-                <span>
-                  {parsedKeywords.length} keyword{parsedKeywords.length !== 1 ? "s" : ""} entered
-                </span>
+                <span>Single keyword for faster results</span>
               </div>
             </div>
 
@@ -163,12 +159,12 @@ export function DomainForm({ onSearch, loading }: DomainFormProps) {
             {loading ? (
               <div className="flex items-center gap-2">
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                Checking domain availability...
+                Checking availability for cities...
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <Search className="h-5 w-5" />
-                Generate {parsedKeywords.length} × Cities Domains
+                <CheckCircle className="h-5 w-5" />
+                Find Available Domains (1 keyword × Cities)
               </div>
             )}
           </Button>

@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast"
 
 interface DomainResultsProps {
   results: DomainResult[]
-  keywords: string[] // Changed from single keyword to array
+  keywords: string[] // Keep as array for compatibility but will only have 1 item
 }
 
 export function DomainResults({ results, keywords }: DomainResultsProps) {
@@ -121,7 +121,7 @@ export function DomainResults({ results, keywords }: DomainResultsProps) {
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Badge variant="secondary">{keywords.length} Keywords</Badge>
+          <Badge variant="secondary">1 Keyword</Badge>
           <Badge variant="default">{results.length} Available Domains</Badge>
         </div>
         {totalPages > 1 && (

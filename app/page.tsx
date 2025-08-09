@@ -4,10 +4,7 @@ import { useState } from "react"
 import { DomainForm } from "@/components/domain-form"
 import { DomainResults } from "@/components/domain-results"
 import { Header } from "@/components/header"
-import { domainChecker } from "@/lib/advanced-domain-checker"
-import { checkTrademarkConflict } from "@/lib/domain-checker"
 import { countriesData } from "@/data/cities"
-import DomainGenerator from "../domain-generator"
 
 export interface DomainResult {
   domain: string
@@ -24,6 +21,29 @@ export default function Home() {
   const [loading, setLoading] = useState(false)
   const [currentKeywords, setCurrentKeywords] = useState<string[]>([])
 
+  // Simple domain availability check
+  const checkDomainAvailability = async (domain: string): Promise<boolean> => {
+    try {
+      // Try to fetch the domain - if it responds, it's likely taken
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 3000) // 3 second timeout
+
+      const response = await fetch(`https://${domain}`, {
+        method: "HEAD",
+        signal: controller.signal,
+        mode: "no-cors",
+      })
+
+      clearTimeout(timeoutId)
+
+      // If we get any response, domain is likely taken
+      return false
+    } catch (error) {
+      // If request fails (CORS, timeout, etc.), domain might be available
+      return true
+    }
+  }
+
   const handleSearch = async (searchParams: {
     keywords: string[]
     country: string
@@ -36,22 +56,21 @@ export default function Home() {
     setCurrentKeywords(searchParams.keywords)
 
     try {
-      // Generate potential domains for all keywords × cities combinations
+      // Generate potential domains for single keyword × cities combinations
       const potentialDomains = generateDomainCombinations(searchParams)
 
-      // Check availability for each domain
-      const checkedResults: DomainResult[] = []
+      // Check availability for each domain and only keep available ones
+      const availableResults: DomainResult[] = []
 
-      // Process domains in batches to avoid overwhelming APIs
-      const batchSize = 5
+      // Process domains in smaller batches to avoid overwhelming the browser
+      const batchSize = 20 // Increased batch size since we have fewer domains
       for (let i = 0; i < potentialDomains.length; i += batchSize) {
         const batch = potentialDomains.slice(i, i + batchSize)
 
         const batchPromises = batch.map(async (domainData) => {
-          const isAvailable = await domainChecker.checkAvailability(domainData.domain)
-          const hasTrademarkIssue = await checkTrademarkConflict(domainData.keyword || "")
+          const isAvailable = await checkDomainAvailability(domainData.domain)
 
-          if (isAvailable && !hasTrademarkIssue) {
+          if (isAvailable) {
             return {
               ...domainData,
               available: true,
@@ -62,18 +81,19 @@ export default function Home() {
         })
 
         const batchResults = await Promise.all(batchPromises)
-        checkedResults.push(...batchResults.filter((result) => result !== null))
+        const availableDomains = batchResults.filter((result) => result !== null)
+        availableResults.push(...availableDomains)
 
-        // Small delay between batches
+        // Smaller delay since we have fewer domains to check
         if (i + batchSize < potentialDomains.length) {
-          await new Promise((resolve) => setTimeout(resolve, 300))
+          await new Promise((resolve) => setTimeout(resolve, 50))
         }
       }
 
       // Sort by population (highest first) to show most important cities first
-      checkedResults.sort((a, b) => b.population - a.population)
+      availableResults.sort((a, b) => b.population - a.population)
 
-      setResults(checkedResults)
+      setResults(availableResults)
     } catch (error) {
       console.error("Error checking domains:", error)
       setResults([])
@@ -82,7 +102,6 @@ export default function Home() {
     }
   }
 
-  // Generate multiple domain combinations for all keywords × cities
   const generateDomainCombinations = (searchParams: {
     keywords: string[]
     country: string
@@ -97,30 +116,31 @@ export default function Home() {
     const countryData = countriesData.find((country) => country.code === searchParams.country)
     const cities = countryData ? countryData.cities : []
 
-    // Generate domains for each keyword × city combination
-    searchParams.keywords.forEach((keyword) => {
-      cities.forEach((cityData) => {
-        const cleanCity = cityData.name.replace(/\s+/g, "") // Remove all spaces from city name
-        const cleanKeyword = keyword.replace(/\s+/g, "") // Remove spaces from keyword
-        let domainName = ""
+    // Use only the first keyword (single keyword mode)
+    const keyword = searchParams.keywords[0]
+    if (!keyword) return domains
 
-        if (searchParams.keywordPosition === "beginning") {
-          domainName = searchParams.swapWords
-            ? `${cleanCity}${cleanKeyword}${searchParams.extension}`
-            : `${cleanKeyword}${cleanCity}${searchParams.extension}`
-        } else {
-          domainName = searchParams.swapWords
-            ? `${cleanKeyword}${cleanCity}${searchParams.extension}`
-            : `${cleanCity}${cleanKeyword}${searchParams.extension}`
-        }
+    cities.forEach((cityData) => {
+      const cleanCity = cityData.name.replace(/[^a-zA-Z0-9]/g, "")
+      const cleanKeyword = keyword.replace(/[^a-zA-Z0-9]/g, "")
+      let domainName = ""
 
-        domains.push({
-          domain: domainName.toLowerCase(),
-          keyword: keyword, // Store the original keyword
-          city: cityData.name, // Keep original city name for display
-          state: cityData.state,
-          population: cityData.population || getPopulationForCity(cityData.name),
-        })
+      if (searchParams.keywordPosition === "beginning") {
+        domainName = searchParams.swapWords
+          ? `${cleanCity}${cleanKeyword}${searchParams.extension}`
+          : `${cleanKeyword}${cleanCity}${searchParams.extension}`
+      } else {
+        domainName = searchParams.swapWords
+          ? `${cleanKeyword}${cleanCity}${searchParams.extension}`
+          : `${cleanCity}${cleanKeyword}${searchParams.extension}`
+      }
+
+      domains.push({
+        domain: domainName.toLowerCase(),
+        keyword: keyword,
+        city: cityData.name,
+        state: cityData.state,
+        population: cityData.population || getPopulationForCity(cityData.name),
       })
     })
 
@@ -133,7 +153,6 @@ export default function Home() {
       <main className="container mx-auto px-4 py-8">
         <DomainForm onSearch={handleSearch} loading={loading} />
         {results.length > 0 && <DomainResults results={results} keywords={currentKeywords} />}
-        <DomainGenerator />
       </main>
     </div>
   )
