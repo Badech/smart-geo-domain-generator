@@ -1,14 +1,15 @@
-'use client'
+"use client"
 
-import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Switch } from '@/components/ui/switch'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Search, MapPin, Globe, Settings } from 'lucide-react'
-import { countryCityData } from '@/data/cities'
+import type React from "react"
+
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Search, MapPin, Globe, Settings } from "lucide-react"
 
 interface DomainFormProps {
   onSearch: (params: {
@@ -23,28 +24,25 @@ interface DomainFormProps {
 }
 
 export function DomainForm({ onSearch, loading }: DomainFormProps) {
-  const [keyword, setKeyword] = useState('')
-  const [country, setCountry] = useState('')
-  const [city, setCity] = useState('')
-  const [keywordPosition, setKeywordPosition] = useState('end')
-  const [extension, setExtension] = useState('.com')
+  const [keyword, setKeyword] = useState("")
+  const [country, setCountry] = useState("")
+  const [keywordPosition, setKeywordPosition] = useState("end")
+  const [extension, setExtension] = useState(".com")
   const [swapWords, setSwapWords] = useState(false)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (keyword && country && city) {
+    if (keyword && country) {
       onSearch({
         keyword,
         country,
-        city,
+        city: "", // Pass empty string since we're not selecting a specific city
         keywordPosition,
         extension,
-        swapWords
+        swapWords,
       })
     }
   }
-
-  const availableCities = country ? countryCityData[country] || [] : []
 
   return (
     <Card className="bg-white/95 backdrop-blur-sm shadow-2xl border-0 mb-8">
@@ -53,12 +51,15 @@ export function DomainForm({ onSearch, loading }: DomainFormProps) {
           Geo Domain Random Domain Name Generator
         </CardTitle>
         <CardDescription className="text-lg text-gray-600 max-w-4xl mx-auto">
-          GEO Domain Names Generator will help you generate domains for a specific keyword in all cities sorted by population, 
-          it provides also CPC and appraisal for the domains.
+          Generate geo-targeted domain names for your keyword across all major cities in USA or Canada. Get availability
+          status, population data, and useful tools for each domain suggestion.
         </CardDescription>
         <div className="bg-orange-100 border border-orange-200 rounded-lg p-3 mt-4">
           <p className="text-orange-800 text-sm">
-            💡 Do you want us to add a feature to the website: <a href="#" className="text-orange-600 underline">Let us know</a>
+            💡 Do you want us to add a feature to the website:{" "}
+            <a href="#" className="text-orange-600 underline">
+              Let us know
+            </a>
           </p>
         </div>
       </CardHeader>
@@ -102,33 +103,15 @@ export function DomainForm({ onSearch, loading }: DomainFormProps) {
               <MapPin className="h-4 w-4" />
               Location
             </Label>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Select value={country} onValueChange={(value) => {
-                setCountry(value)
-                setCity('') // Reset city when country changes
-              }}>
-                <SelectTrigger className="border-gray-300 focus:border-orange-500 focus:ring-orange-500">
-                  <SelectValue placeholder="Select Country" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="USA">🇺🇸 USA</SelectItem>
-                  <SelectItem value="Canada">🇨🇦 Canada</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={city} onValueChange={setCity} disabled={!country}>
-                <SelectTrigger className="border-gray-300 focus:border-orange-500 focus:ring-orange-500">
-                  <SelectValue placeholder="Select City" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableCities.map((cityName) => (
-                    <SelectItem key={cityName} value={cityName}>
-                      {cityName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <Select value={country} onValueChange={setCountry}>
+              <SelectTrigger className="border-gray-300 focus:border-orange-500 focus:ring-orange-500">
+                <SelectValue placeholder="Select Country" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="USA">🇺🇸 USA</SelectItem>
+                <SelectItem value="Canada">🇨🇦 Canada</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">
@@ -151,11 +134,7 @@ export function DomainForm({ onSearch, loading }: DomainFormProps) {
           </div>
 
           <div className="flex items-center space-x-2">
-            <Switch
-              id="swap-words"
-              checked={swapWords}
-              onCheckedChange={setSwapWords}
-            />
+            <Switch id="swap-words" checked={swapWords} onCheckedChange={setSwapWords} />
             <Label htmlFor="swap-words" className="text-gray-700">
               Swap Words ⇄
             </Label>
@@ -164,7 +143,7 @@ export function DomainForm({ onSearch, loading }: DomainFormProps) {
           <Button
             type="submit"
             className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-semibold py-3 text-lg shadow-lg"
-            disabled={loading || !keyword || !country || !city}
+            disabled={loading || !keyword || !country}
           >
             {loading ? (
               <div className="flex items-center gap-2">
