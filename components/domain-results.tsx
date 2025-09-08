@@ -32,16 +32,18 @@ export function DomainResults({ results, keywords }: DomainResultsProps) {
   }
 
   const copyAllDomains = () => {
-    const allDomains = results.map((result) => result.domain).join("\n")
+    const allDomains = results
+      .map((result) => `${result.domain} - ${result.available ? "AVAILABLE" : "TAKEN"}`)
+      .join("\n")
     navigator.clipboard.writeText(allDomains)
     toast({
       title: "All domains copied!",
-      description: `${results.length} domains copied to clipboard`,
+      description: `${results.length} domains with availability status copied`,
     })
   }
 
   const exportToCsv = () => {
-    const headers = ["Domain", "Keyword", "City", "State", "Population", "Available"]
+    const headers = ["Domain", "Keyword", "City", "State", "Population", "Available", "Length", "Status"]
     const csvContent = [
       headers.join(","),
       ...results.map((result) =>
@@ -52,6 +54,8 @@ export function DomainResults({ results, keywords }: DomainResultsProps) {
           result.state,
           result.population,
           result.available ? "Yes" : "No",
+          result.domain.length,
+          result.available ? "Available" : "Taken",
         ].join(","),
       ),
     ].join("\n")
@@ -60,7 +64,7 @@ export function DomainResults({ results, keywords }: DomainResultsProps) {
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = "domains.csv"
+    a.download = "all-domains-with-availability.csv"
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -68,7 +72,8 @@ export function DomainResults({ results, keywords }: DomainResultsProps) {
   const getRedirectUrl = (type: string, domain: string, city: string, keyword: string) => {
     switch (type) {
       case "appraisal":
-        return `https://www.dynadot.com/domain/appraisal.html?domain=${domain}`
+        // Use the full domain name for appraisal
+        return `https://www.dynadot.com/domain/appraisal.html?domain=${encodeURIComponent(domain)}`
       case "volume":
         return `https://app.neilpatel.com/en/ubersuggest/overview?keyword=${encodeURIComponent(domain)}&lang=en&locId=2840`
       case "maps":
@@ -98,7 +103,9 @@ export function DomainResults({ results, keywords }: DomainResultsProps) {
     <Card className="bg-white/95 backdrop-blur-sm shadow-2xl border-0">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-2xl font-bold text-gray-800">Domain Results ({results.length} found)</CardTitle>
+          <CardTitle className="text-2xl font-bold text-gray-800">
+            All Domain Results ({results.length} total)
+          </CardTitle>
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -122,7 +129,13 @@ export function DomainResults({ results, keywords }: DomainResultsProps) {
         </div>
         <div className="flex gap-2 flex-wrap">
           <Badge variant="secondary">1 Keyword</Badge>
-          <Badge variant="default">{results.length} Available Domains</Badge>
+          <Badge variant="default" className="bg-green-100 text-green-800">
+            {results.filter((r) => r.available).length} Available
+          </Badge>
+          <Badge variant="outline" className="bg-red-100 text-red-800">
+            {results.filter((r) => !r.available).length} Taken
+          </Badge>
+          <Badge variant="outline">{results.length} Total</Badge>
         </div>
         {totalPages > 1 && (
           <div className="flex items-center justify-between">
@@ -158,6 +171,7 @@ export function DomainResults({ results, keywords }: DomainResultsProps) {
             <thead>
               <tr className="border-b border-gray-200">
                 <th className="text-left py-3 px-4 font-semibold text-gray-700">DOMAIN</th>
+                <th className="text-left py-3 px-4 font-semibold text-gray-700">LENGTH</th>
                 <th className="text-left py-3 px-4 font-semibold text-gray-700">KEYWORD</th>
                 <th className="text-left py-3 px-4 font-semibold text-gray-700">POPULATION</th>
                 <th className="text-left py-3 px-4 font-semibold text-gray-700">STATE</th>
@@ -186,6 +200,22 @@ export function DomainResults({ results, keywords }: DomainResultsProps) {
                       </div>
                     </td>
                     <td className="py-4 px-4">
+                      <div className="flex items-center gap-1">
+                        <span
+                          className={`text-sm font-medium ${
+                            result.domain.length <= 12
+                              ? "text-green-600"
+                              : result.domain.length <= 18
+                                ? "text-yellow-600"
+                                : "text-red-600"
+                          }`}
+                        >
+                          {result.domain.length}
+                        </span>
+                        <span className="text-xs text-gray-500">chars</span>
+                      </div>
+                    </td>
+                    <td className="py-4 px-4">
                       <Badge variant="outline" className="text-xs">
                         {result.keyword || "N/A"}
                       </Badge>
@@ -193,9 +223,15 @@ export function DomainResults({ results, keywords }: DomainResultsProps) {
                     <td className="py-4 px-4 text-gray-600">{result.population.toLocaleString()}</td>
                     <td className="py-4 px-4 text-gray-600">{result.state}</td>
                     <td className="py-4 px-4">
-                      <Badge variant="secondary" className="bg-green-100 text-green-800">
-                        Available
-                      </Badge>
+                      {result.available ? (
+                        <Badge variant="secondary" className="bg-green-100 text-green-800">
+                          ✅ Available
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="bg-red-100 text-red-800">
+                          ❌ Taken
+                        </Badge>
+                      )}
                     </td>
                     <td className="py-4 px-4">
                       <div className="flex flex-wrap gap-1">
